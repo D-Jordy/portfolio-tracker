@@ -10,5 +10,5 @@ storage/logs/*.log
 storage/framework/cache/data/*
 storage/framework/sessions/*
 storage/framework/views/*
-docker/
+docker/nginx/
 *.md
