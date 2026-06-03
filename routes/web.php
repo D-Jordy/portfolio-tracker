@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AccountController;
+use App\Http\Controllers\DividendController;
 use App\Http\Controllers\ImportController;
 use App\Http\Controllers\PortfolioController;
 use App\Http\Controllers\ProfileController;
@@ -26,6 +27,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Portfolio
     Route::get('/portfolio', [PortfolioController::class, 'index'])->name('portfolio');
+
+    // Dividend income forecast
+    Route::get('/dividends', [DividendController::class, 'index'])->name('dividends');
 
     // Accounts
     Route::get('/accounts', [AccountController::class, 'index'])->name('accounts.index');
