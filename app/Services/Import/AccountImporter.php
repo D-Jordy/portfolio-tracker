@@ -20,10 +20,10 @@ use Illuminate\Support\Facades\Log;
  *   4  ISIN            (often blank)
  *   5  Omschrijving    (description — drives the classifier)
  *   6  FX              (FX rate on the Valuta Debitering leg)
- *   7  Mutatie         (amount, Dutch decimal)
- *   8  (Mutatie currency — unlabelled)
- *   9  Saldo           (running balance)
- *  10  (Saldo currency — unlabelled)
+ *   7  Mutatie         (currency — unlabelled sub-column)
+ *   8  (Mutatie amount — Dutch decimal)
+ *   9  Saldo           (currency — unlabelled sub-column)
+ *  10  (Saldo amount   — Dutch decimal)
  *  11  Order Id        (often blank)
  *
  * Dedupe: no reliable unique ID → hash(date + time + description + amount + currency)
@@ -66,8 +66,8 @@ class AccountImporter
 
         $description = trim($row[5] ?? '');
         $isin        = trim($row[4] ?? '');
-        $rawAmount   = $this->parseDecimal($row[7]);
-        $currency    = trim($row[8] ?? '');
+        $currency    = trim($row[7] ?? '');
+        $rawAmount   = $this->parseDecimal($row[8]);
 
         if ($rawAmount === null || $currency === '') {
             return;
@@ -79,7 +79,7 @@ class AccountImporter
         $excluded = $this->isExcludedFromReturns($type);
 
         $dedupeHash = $this->dedupeHash(
-            $row[0], $row[1], $description, $rawAmount, $row[8] ?? ''
+            $row[0], $row[1], $description, $rawAmount, $row[7] ?? ''
         );
 
         // Idempotency: skip if this hash already exists for this account
@@ -102,7 +102,7 @@ class AccountImporter
         $occurredAt = $this->parseDateTime($row[0], $row[1]);
         $valueDate  = $this->parseDate($row[2]);
         $fxRate     = $this->parseDecimal($row[6]);
-        $balanceEur = $this->parseBalanceEur($row[9], $row[10] ?? '');
+        $balanceEur = $this->parseBalanceEur($row[10], $row[9] ?? '');
 
         CashMovement::create([
             'account_id'              => $account->id,

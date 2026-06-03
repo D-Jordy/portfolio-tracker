@@ -3,7 +3,7 @@
 namespace App\Services\Import;
 
 /**
- * Rule #1: GBp (yfinance) and GBX (DEGIRO) both mean pence.
+ * Rule #1: GBp (Yahoo Finance) and GBX (DEGIRO) both mean pence.
  * Divide by 100, store as GBP.
  * This is the single place where that conversion happens.
  */
