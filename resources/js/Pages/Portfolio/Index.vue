@@ -68,6 +68,9 @@
                     </div>
                 </div>
 
+                <!-- Portfolio history chart -->
+                <PortfolioChart v-if="chartData.length > 1" :chart-data="chartData" />
+
                 <!-- Positions table -->
                 <div v-if="positions.length === 0" class="rounded-lg bg-white p-10 text-center shadow-sm">
                     <p class="text-gray-700 font-medium">No positions yet.</p>
@@ -139,10 +142,12 @@
 <script setup>
 import { Head, Link } from '@inertiajs/vue3'
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
+import PortfolioChart from '@/Components/PortfolioChart.vue'
 
 defineProps({
-    positions: { type: Array, required: true },
-    summary:   { type: Object, required: true },
+    positions:  { type: Array, required: true },
+    summary:    { type: Object, required: true },
+    chartData:  { type: Array, required: true },
 })
 
 const eurFmt = new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR', maximumFractionDigits: 2 })
