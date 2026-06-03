@@ -1,12 +1,9 @@
 <template>
-    <Head title="Dashboard" />
+    <Head title="Portfolio" />
 
     <AuthenticatedLayout>
         <template #header>
-            <div class="flex items-center justify-between">
-                <h2 class="text-xl font-semibold leading-tight text-gray-800">Dashboard</h2>
-                <span v-if="priceDate" class="text-xs text-gray-400">Prices as of {{ priceDate }}</span>
-            </div>
+            <h2 class="text-xl font-semibold leading-tight text-gray-800">Portfolio</h2>
         </template>
 
         <div class="py-12">
@@ -73,8 +70,12 @@
 
                 <!-- Positions table -->
                 <div v-if="positions.length === 0" class="rounded-lg bg-white p-10 text-center shadow-sm">
-                    <p class="text-gray-500">No open positions.</p>
-                    <p class="mt-1 text-sm text-gray-400">Import transactions and run <code class="rounded bg-gray-100 px-1">prices:fetch</code>.</p>
+                    <p class="text-gray-700 font-medium">No positions yet.</p>
+                    <p class="mt-1 text-sm text-gray-500">Import your DEGIRO transaction and account CSVs to get started.</p>
+                    <Link :href="route('accounts.index')"
+                          class="mt-4 inline-block rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700">
+                        Go to Accounts
+                    </Link>
                 </div>
 
                 <div v-else class="overflow-x-auto rounded-lg bg-white shadow-sm">
@@ -127,20 +128,6 @@
                                 </td>
                             </tr>
                         </tbody>
-                        <tfoot class="border-t-2 border-gray-200 bg-gray-50 font-medium">
-                            <tr>
-                                <td class="px-4 py-3 text-gray-500" colspan="4">Total</td>
-                                <td class="px-4 py-3 text-right tabular-nums text-gray-900">
-                                    {{ eur(summary.total_value_eur) }}
-                                </td>
-                                <td class="px-4 py-3 text-right tabular-nums" :class="gainClass(summary.total_unrealized_gain_eur)">
-                                    {{ eur(summary.total_unrealized_gain_eur) }}
-                                </td>
-                                <td class="px-4 py-3 text-right tabular-nums" :class="gainClass(summary.total_dividend_eur)">
-                                    {{ eur(summary.total_dividend_eur) }}
-                                </td>
-                            </tr>
-                        </tfoot>
                     </table>
                 </div>
 
@@ -150,11 +137,11 @@
 </template>
 
 <script setup>
-import { Head } from '@inertiajs/vue3'
+import { Head, Link } from '@inertiajs/vue3'
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 
-const props = defineProps({
-    positions: { type: Array, default: () => [] },
+defineProps({
+    positions: { type: Array, required: true },
     summary:   { type: Object, required: true },
 })
 
@@ -179,10 +166,4 @@ function gainClass(v) {
     if (v == null) return 'text-gray-500'
     return v >= 0 ? 'text-green-600' : 'text-red-600'
 }
-
-const priceDate = computed(() => {
-    const dates = props.positions.map(p => p.latest_price_date).filter(Boolean)
-    if (!dates.length) return null
-    return dates.reduce((a, b) => a > b ? a : b)
-})
 </script>
