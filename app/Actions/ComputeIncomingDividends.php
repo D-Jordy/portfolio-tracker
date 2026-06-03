@@ -79,9 +79,17 @@ class ComputeIncomingDividends
         // Sort all events by ex_date ascending.
         usort($events, fn($a, $b) => $a['ex_date'] <=> $b['ex_date']);
 
-        // Attach EUR amounts.
-        $uniqueCurrencies = $currencies->merge(collect($events)->pluck('currency'))->unique()->filter(fn($c) => $c !== 'EUR');
-        $fxRates          = $this->latestFxRatesFor($uniqueCurrencies);
+        // Pre-load trailing cash movements so we can include their currencies in the FX lookup.
+        $trailingRows = $this->rawTrailingRows($accountIds);
+
+        // Collect all currencies needed: forecast events + trailing cash movements.
+        $uniqueCurrencies = $currencies
+            ->merge(collect($events)->pluck('currency'))
+            ->merge($trailingRows->pluck('currency'))
+            ->unique()
+            ->filter(fn($c) => $c !== 'EUR')
+            ->values();
+        $fxRates = $this->latestFxRatesFor($uniqueCurrencies);
 
         $next12mTotal = 0.0;
 
@@ -102,7 +110,7 @@ class ComputeIncomingDividends
         $monthly = $this->buildMonthlyBuckets($events, $today);
 
         // Trailing 12-month net received (dividends net of withholding tax, EUR).
-        $trailing = $this->trailingReceivedEur($accountIds, $fxRates);
+        $trailing = $this->trailingReceivedEur($trailingRows, $fxRates);
 
         $summary = [
             'next_12m_total_eur'        => round($next12mTotal, 2),
@@ -229,17 +237,25 @@ class ComputeIncomingDividends
         return round($amount * (float) $fx->rate_to_eur, 2);
     }
 
-    /** Replicates ComputePortfolio::latestFxRatesFor — Postgres DISTINCT ON per currency. */
+    /** Latest FX rate per currency — uses a portable MAX(date) subquery (works with SQLite and Postgres). */
     private function latestFxRatesFor(Collection $currencies): Collection
     {
         if ($currencies->isEmpty()) {
             return collect();
         }
 
-        return FxRate::whereIn('currency', $currencies)
-            ->select(DB::raw('DISTINCT ON (currency) currency, rate_to_eur'))
-            ->orderBy('currency')
-            ->orderByDesc('date')
+        $latest = FxRate::query()
+            ->select('currency', DB::raw('MAX(date) as max_date'))
+            ->whereIn('currency', $currencies)
+            ->groupBy('currency');
+
+        return FxRate::query()
+            ->joinSub($latest, 'latest', function ($join) {
+                $join->on('fx_rates.currency', '=', 'latest.currency')
+                     ->on('fx_rates.date', '=', 'latest.max_date');
+            })
+            ->whereIn('fx_rates.currency', $currencies)
+            ->select('fx_rates.currency', 'fx_rates.rate_to_eur')
             ->get()
             ->keyBy('currency');
     }
@@ -271,22 +287,26 @@ class ComputeIncomingDividends
         );
     }
 
-    /**
-     * Net dividend income (dividends + withholding_tax) received in the last 12 months,
-     * converted to EUR. Mirrors the math in ComputePortfolio::dividendsEurByInstrument().
-     */
-    private function trailingReceivedEur(mixed $accountIds, Collection $fxRates): float
+    /** Raw trailing-12m dividend + withholding_tax cash movement rows for FX currency collection. */
+    private function rawTrailingRows(mixed $accountIds): Collection
     {
         if ($accountIds->isEmpty()) {
-            return 0.0;
+            return collect();
         }
 
-        $rows = CashMovement::whereIn('account_id', $accountIds)
+        return CashMovement::whereIn('account_id', $accountIds)
             ->whereIn('type', ['dividend', 'withholding_tax'])
             ->where('occurred_at', '>=', now()->subYear())
             ->select('amount', 'currency')
             ->get();
+    }
 
+    /**
+     * Net dividend income received in the last 12 months, converted to EUR.
+     * Mirrors the math in ComputePortfolio::dividendsEurByInstrument().
+     */
+    private function trailingReceivedEur(Collection $rows, Collection $fxRates): float
+    {
         $total = 0.0;
 
         foreach ($rows as $row) {
@@ -305,6 +325,10 @@ class ComputeIncomingDividends
 
     private function emptyResult(mixed $accountIds): array
     {
+        $trailingRows = $this->rawTrailingRows($accountIds);
+        $trailingCurrencies = $trailingRows->pluck('currency')->unique()->filter(fn($c) => $c !== 'EUR')->values();
+        $fxRates = $this->latestFxRatesFor($trailingCurrencies);
+
         return [
             'events'  => [],
             'monthly' => array_map(
@@ -313,7 +337,7 @@ class ComputeIncomingDividends
             ),
             'summary' => [
                 'next_12m_total_eur'        => 0.0,
-                'trailing_12m_received_eur' => 0.0,
+                'trailing_12m_received_eur' => round($this->trailingReceivedEur($trailingRows, $fxRates), 2),
                 'instrument_count'          => 0,
             ],
         ];
