@@ -46,6 +46,12 @@ const showingNavigationDropdown = ref(false);
                                     Dividends
                                 </NavLink>
                                 <NavLink
+                                    :href="route('projections')"
+                                    :active="route().current('projections')"
+                                >
+                                    Projections
+                                </NavLink>
+                                <NavLink
                                     :href="route('accounts.index')"
                                     :active="route().current('accounts.*')"
                                 >
@@ -163,6 +169,12 @@ const showingNavigationDropdown = ref(false);
                             :active="route().current('dividends')"
                         >
                             Dividends
+                        </ResponsiveNavLink>
+                        <ResponsiveNavLink
+                            :href="route('projections')"
+                            :active="route().current('projections')"
+                        >
+                            Projections
                         </ResponsiveNavLink>
                         <ResponsiveNavLink
                             :href="route('accounts.index')"
