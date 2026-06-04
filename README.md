@@ -1,3 +1,5 @@
+Disclaimer: this project is a work in progress and has yet to be deployed
+
 # Portfolio Tracker
 
 DeGiro is alright, unless you want insight into your portfolio.
