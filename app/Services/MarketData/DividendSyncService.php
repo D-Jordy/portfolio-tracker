@@ -61,7 +61,49 @@ class DividendSyncService
             );
         }
 
+        $this->syncConfirmedUpcoming($instrument);
+
         return count($records);
+    }
+
+    /**
+     * Fetch the next confirmed ex-date from Yahoo calendarEvents and upsert one
+     * confirmed=true row using the most recent historical amount.
+     */
+    private function syncConfirmedUpcoming(Instrument $instrument): void
+    {
+        $upcoming = $this->yahoo->upcomingDividend($instrument->yahoo_symbol);
+
+        if (!$upcoming) {
+            return;
+        }
+
+        // Amount from most recent historical row (already normalised at ingest time).
+        $latest = Dividend::where('instrument_id', $instrument->id)
+            ->where('confirmed', false)
+            ->orderByDesc('ex_date')
+            ->first();
+
+        if (!$latest) {
+            return;
+        }
+
+        $now = now();
+
+        DB::table('dividends')->upsert(
+            [[
+                'instrument_id'    => $instrument->id,
+                'ex_date'          => $upcoming['ex_date'],
+                'pay_date'         => $upcoming['pay_date'],
+                'amount_per_share' => $latest->amount_per_share,
+                'currency'         => $latest->currency,
+                'confirmed'        => true,
+                'created_at'       => $now,
+                'updated_at'       => $now,
+            ]],
+            ['instrument_id', 'ex_date'],
+            ['pay_date', 'amount_per_share', 'currency', 'confirmed', 'updated_at']
+        );
     }
 
     /**

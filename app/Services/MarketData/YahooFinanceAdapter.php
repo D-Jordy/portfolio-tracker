@@ -7,8 +7,9 @@ use Illuminate\Support\Facades\Http;
 
 class YahooFinanceAdapter
 {
-    private const CHART_URL  = 'https://query2.finance.yahoo.com/v8/finance/chart';
-    private const SEARCH_URL = 'https://query2.finance.yahoo.com/v1/finance/search';
+    private const CHART_URL         = 'https://query2.finance.yahoo.com/v8/finance/chart';
+    private const SEARCH_URL        = 'https://query2.finance.yahoo.com/v1/finance/search';
+    private const QUOTE_SUMMARY_URL = 'https://query2.finance.yahoo.com/v10/finance/quoteSummary';
 
     // DEGIRO exchange code → preferred Yahoo symbol suffix
     private const EXCHANGE_SUFFIX = [
@@ -93,6 +94,67 @@ class YahooFinanceAdapter
     }
 
     /**
+     * Fetch the next confirmed ex-date and pay-date from Yahoo's calendarEvents module.
+     * Returns ['ex_date' => 'YYYY-MM-DD', 'pay_date' => 'YYYY-MM-DD'|null] or null
+     * when no future confirmed event is available or the request fails.
+     */
+    public function upcomingDividend(string $symbol): ?array
+    {
+        $data = $this->quoteSummary($symbol, 'calendarEvents');
+
+        if ($data === null) {
+            return null;
+        }
+
+        $calendar = $data['calendarEvents'] ?? null;
+
+        if (!$calendar) {
+            return null;
+        }
+
+        $exTs  = $calendar['exDividendDate']['raw']  ?? null;
+        $payTs = $calendar['dividendDate']['raw']     ?? null;
+
+        if (!$exTs) {
+            return null;
+        }
+
+        $exDate = Carbon::createFromTimestamp($exTs)->toDateString();
+
+        if ($exDate < now()->toDateString()) {
+            return null;
+        }
+
+        return [
+            'ex_date'  => $exDate,
+            'pay_date' => $payTs ? Carbon::createFromTimestamp($payTs)->toDateString() : null,
+        ];
+    }
+
+    /**
+     * Fetch analyst consensus target price and rating from Yahoo's financialData module.
+     * Returns ['target_price' => float|null, 'rating' => string|null].
+     */
+    public function analystData(string $symbol): array
+    {
+        $data = $this->quoteSummary($symbol, 'financialData');
+
+        if ($data === null) {
+            return ['target_price' => null, 'rating' => null];
+        }
+
+        $fin = $data['financialData'] ?? [];
+
+        $targetRaw = $fin['targetMeanPrice']['raw'] ?? null;
+        $ratingRaw = $fin['recommendationKey']      ?? null;
+
+        return [
+            'target_price' => $targetRaw !== null ? (float) $targetRaw : null,
+            'rating'       => $ratingRaw ?: null,
+        ];
+    }
+
+    /**
      * Search Yahoo Finance for a symbol matching the given ISIN.
      * Returns the best-matching yahoo_symbol string, or null if nothing found.
      * Pass the DEGIRO exchange code to improve match quality.
@@ -134,6 +196,29 @@ class YahooFinanceAdapter
 
         // Fall back to highest-scored result.
         return $quotes->sortByDesc('score')->first()['symbol'] ?? null;
+    }
+
+    /**
+     * Call a Yahoo Finance v10 quoteSummary module and return the first result's data,
+     * or null on failure (so callers can treat missing data as non-fatal).
+     */
+    private function quoteSummary(string $symbol, string $module): ?array
+    {
+        $response = Http::withHeaders(['User-Agent' => 'Mozilla/5.0'])
+            ->timeout(15)
+            ->get(self::QUOTE_SUMMARY_URL . "/{$symbol}", ['modules' => $module]);
+
+        if (!$response->successful()) {
+            return null;
+        }
+
+        $body = $response->json();
+
+        if (!empty($body['quoteSummary']['error'])) {
+            return null;
+        }
+
+        return $body['quoteSummary']['result'][0] ?? null;
     }
 
     private function chart(string $symbol, string $fromDate): array
