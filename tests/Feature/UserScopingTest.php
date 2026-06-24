@@ -54,6 +54,6 @@ class UserScopingTest extends TestCase
     {
         $user = User::factory()->create();
 
-        $this->actingAs($user)->get('/app')->assertSuccessful();
+        $this->actingAs($user)->get('/')->assertSuccessful();
     }
 }

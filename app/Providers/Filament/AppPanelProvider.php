@@ -23,7 +23,7 @@ class AppPanelProvider extends PanelProvider
         return $panel
             ->default()
             ->id('app')
-            ->path('app')
+            ->path('')
             ->viteTheme('resources/css/filament/app/theme.css')
             ->brandName(config('app.name'))
             ->brandLogo(fn () => view('filament.brand'))
