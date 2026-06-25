@@ -13,11 +13,11 @@ class AccountForm
         return $schema
             ->components([
                 TextInput::make('name')
-                    ->label('Naam')
+                    ->label(__('accounts.fields.name'))
                     ->required()
                     ->maxLength(100),
                 Select::make('broker')
-                    ->label('Broker')
+                    ->label(__('accounts.fields.broker'))
                     ->options(['degiro' => 'DEGIRO'])
                     ->default('degiro')
                     ->required(),

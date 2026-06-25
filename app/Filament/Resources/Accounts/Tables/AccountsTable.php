@@ -21,15 +21,15 @@ class AccountsTable
         return $table
             ->columns([
                 TextColumn::make('name')
-                    ->label('Naam')
+                    ->label(__('accounts.fields.name'))
                     ->searchable()
                     ->sortable(),
                 TextColumn::make('broker')
-                    ->label('Broker')
+                    ->label(__('accounts.fields.broker'))
                     ->badge()
                     ->formatStateUsing(fn (string $state): string => strtoupper($state)),
                 TextColumn::make('import_watermark')
-                    ->label('Laatste import')
+                    ->label(__('accounts.fields.last_import'))
                     ->date('d-m-Y')
                     ->placeholder('—')
                     ->sortable(),
@@ -44,19 +44,21 @@ class AccountsTable
     private static function importAction(): Action
     {
         return Action::make('import')
-            ->label('Importeren')
+            ->label(__('accounts.import.label'))
             ->icon(Heroicon::OutlinedArrowUpTray)
-            ->modalHeading('CSV importeren')
-            ->modalDescription('Upload je DEGIRO transactie-export en/of het account-overzicht (ledger).')
-            ->modalSubmitActionLabel('Importeren')
+            ->modalHeading(__('accounts.import.heading'))
+            ->modalDescription(__('accounts.import.description'))
+            ->modalSubmitActionLabel(__('accounts.import.submit'))
             ->schema([
                 FileUpload::make('transactions_csv')
-                    ->label('Transacties (DEGIRO)')
+                    ->label(__('accounts.import.transactions.label'))
+                    ->helperText(__('accounts.import.transactions.helper'))
                     ->disk('local')
                     ->directory('imports/transactions')
                     ->acceptedFileTypes(['text/csv', 'text/plain']),
                 FileUpload::make('account_csv')
-                    ->label('Account-overzicht (ledger)')
+                    ->label(__('accounts.import.account.label'))
+                    ->helperText(__('accounts.import.account.helper'))
                     ->disk('local')
                     ->directory('imports/account')
                     ->acceptedFileTypes(['text/csv', 'text/plain']),
@@ -68,11 +70,11 @@ class AccountsTable
                 $results = [];
 
                 if (filled($data['transactions_csv'] ?? null)) {
-                    $results['Transacties'] = $importer->transactions($record, $data['transactions_csv']);
+                    $results[__('accounts.import.group_transactions')] = $importer->transactions($record, $data['transactions_csv']);
                 }
 
                 if (filled($data['account_csv'] ?? null)) {
-                    $results['Account'] = $importer->account($record, $data['account_csv']);
+                    $results[__('accounts.import.group_account')] = $importer->account($record, $data['account_csv']);
                 }
 
                 self::notify($results);
@@ -86,7 +88,7 @@ class AccountsTable
     {
         if ($results === []) {
             Notification::make()
-                ->title('Geen bestand geüpload')
+                ->title(__('accounts.import.no_file'))
                 ->warning()
                 ->send();
 
@@ -94,13 +96,17 @@ class AccountsTable
         }
 
         $lines = collect($results)->map(
-            fn (ImportResult $result, string $label): string => "{$label}: {$result->inserted} toegevoegd, {$result->skipped} overgeslagen"
+            fn (ImportResult $result, string $label): string => __('accounts.import.result_line', [
+                'label' => $label,
+                'inserted' => $result->inserted,
+                'skipped' => $result->skipped,
+            ])
         );
 
         $hasErrors = collect($results)->contains(fn (ImportResult $result): bool => $result->hasErrors());
 
         Notification::make()
-            ->title($hasErrors ? 'Import voltooid met fouten' : 'Import voltooid')
+            ->title($hasErrors ? __('accounts.import.done_errors') : __('accounts.import.done'))
             ->body($lines->implode("\n"))
             ->status($hasErrors ? 'warning' : 'success')
             ->send();
