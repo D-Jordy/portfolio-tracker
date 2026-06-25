@@ -1,0 +1,16 @@
+# Production overlay — used WITH docker-compose.yml (not the dev override).
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+# No host ports: Caddy (separate stack) reaches the web container over the shared
+# external "web" network and terminates TLS for tally.d-jordy.nl.
+services:
+  web:
+    ports: !reset []
+    networks:
+      default: {}
+      web:
+        aliases:
+          - tally-web
+
+networks:
+  web:
+    external: true

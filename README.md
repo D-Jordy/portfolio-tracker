@@ -1,13 +1,13 @@
 Disclaimer: this project is a work in progress and has yet to be deployed
 
-# Portfolio Tracker
+# Tally.
 
 DeGiro is alright, unless you want insight into your portfolio.
 This project fixes this.
 
 This tracker accepts DeGiro's CSV exports and gives the insights I kept missing.
 
-**Live:** https://tracker.d-jordy.nl
+**Live:** https://tally.d-jordy.nl
 
 ---
 

@@ -1,0 +1,5 @@
+# Tally — imported by the central Caddy (/srv/caddy/Caddyfile via `import conf.d/*.caddy`).
+# Reaches the nginx "web" container by its alias on the shared "web" network.
+tally.d-jordy.nl {
+	reverse_proxy tally-web:80
+}
