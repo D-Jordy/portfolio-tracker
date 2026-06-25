@@ -60,7 +60,7 @@ class ComputePortfolioHistory
 
         // FX rates per currency, sorted by date asc
         $fxArrays = [];
-        if (!empty($allCurrencies)) {
+        if (! empty($allCurrencies)) {
             $fxRows = FxRate::whereIn('currency', $allCurrencies)
                 ->orderBy('currency')->orderBy('date')
                 ->get(['currency', 'date', 'rate_to_eur']);
@@ -94,18 +94,18 @@ class ComputePortfolioHistory
             ->all();
 
         // Forward-scan state
-        $currentQtys    = array_fill_keys($instrumentIds, 0.0);
-        $currentPrices  = []; // [instrId => [close, currency]]
+        $currentQtys = array_fill_keys($instrumentIds, 0.0);
+        $currentPrices = []; // [instrId => [close, currency]]
         $currentFxRates = []; // [currency => rate_to_eur]
 
-        $txnPtrs   = array_fill_keys($instrumentIds, 0);
+        $txnPtrs = array_fill_keys($instrumentIds, 0);
         $pricePtrs = array_fill_keys($instrumentIds, 0);
-        $fxPtrs    = array_fill_keys($allCurrencies, 0);
-        $cashIdx   = 0;
+        $fxPtrs = array_fill_keys($allCurrencies, 0);
+        $cashIdx = 0;
 
-        $cumDeposits   = 0.0;
-        $cumDividends  = 0.0;
-        $cumFees       = 0.0;
+        $cumDeposits = 0.0;
+        $cumDividends = 0.0;
+        $cumFees = 0.0;
 
         $result = [];
 
@@ -168,7 +168,7 @@ class ComputePortfolioHistory
             $totalValue = 0.0;
             foreach ($instrumentIds as $instrId) {
                 $qty = $currentQtys[$instrId];
-                if ($qty < 0.0001 || !isset($currentPrices[$instrId])) {
+                if ($qty < 0.0001 || ! isset($currentPrices[$instrId])) {
                     continue;
                 }
                 [$close, $currency] = $currentPrices[$instrId];
@@ -180,11 +180,12 @@ class ComputePortfolioHistory
             }
 
             $result[] = [
-                'date'                     => $date,
-                'total_value_eur'          => round($totalValue, 2),
-                'net_gain_eur'             => round($totalValue - $cumDeposits, 2),
+                'date' => $date,
+                'total_value_eur' => round($totalValue, 2),
+                'invested_eur' => round($cumDeposits, 2),
+                'net_gain_eur' => round($totalValue - $cumDeposits, 2),
                 'cumulative_dividends_eur' => round($cumDividends, 2),
-                'cumulative_fees_eur'      => round($cumFees, 2),
+                'cumulative_fees_eur' => round($cumFees, 2),
             ];
         }
 

@@ -29,7 +29,7 @@ class Portfolio extends Page
     /** @var array<int, array<string, mixed>> */
     public array $positions = [];
 
-    public string $range = 'ALL';
+    public string $range = '1Y';
 
     public function mount(ComputePortfolio $compute): void
     {

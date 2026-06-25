@@ -12,11 +12,11 @@ class PortfolioValueChart extends ApexChartWidget
     protected static ?string $chartId = 'portfolioValueChart';
 
     // Range is driven by the page's underlined toggle, passed in via :key.
-    public string $range = 'ALL';
+    public string $range = '1Y';
 
     protected function getHeading(): ?string
     {
-        return 'Portefeuillewaarde';
+        return __('portfolio.chart.heading');
     }
 
     protected function getOptions(): array
@@ -27,15 +27,28 @@ class PortfolioValueChart extends ApexChartWidget
 
         return [
             'chart' => [
-                'type' => 'area',
+                'type' => 'line',
                 'height' => 300,
                 'toolbar' => ['show' => false],
                 'fontFamily' => 'IBM Plex Mono, monospace',
             ],
-            'series' => [[
-                'name' => 'Waarde',
-                'data' => $history->pluck('total_value_eur')->map(fn ($value): float => (float) $value)->all(),
-            ]],
+            'series' => [
+                [
+                    'name' => __('portfolio.chart.value'),
+                    'type' => 'area',
+                    'data' => $history->pluck('total_value_eur')->map(fn ($value): float => (float) $value)->all(),
+                ],
+                [
+                    'name' => __('portfolio.chart.invested'),
+                    'type' => 'line',
+                    'data' => $history->pluck('invested_eur')->map(fn ($value): float => (float) $value)->all(),
+                ],
+                [
+                    'name' => __('portfolio.chart.dividends'),
+                    'type' => 'line',
+                    'data' => $history->pluck('cumulative_dividends_eur')->map(fn ($value): float => (float) $value)->all(),
+                ],
+            ],
             'xaxis' => [
                 'categories' => $history->pluck('date')->all(),
                 'type' => 'datetime',
@@ -46,10 +59,11 @@ class PortfolioValueChart extends ApexChartWidget
             'yaxis' => [
                 'labels' => ['style' => ['colors' => '#9a9488', 'fontFamily' => 'IBM Plex Mono, monospace']],
             ],
-            'colors' => ['#1a1a1a'],
-            'stroke' => ['curve' => 'smooth', 'width' => 2.5],
+            'colors' => ['#1a1a1a', '#9a9488', '#2f7d52'],
+            'stroke' => ['curve' => 'smooth', 'width' => [2.5, 1.5, 1.5], 'dashArray' => [0, 4, 0]],
+            'legend' => ['show' => true, 'fontFamily' => 'IBM Plex Mono, monospace', 'labels' => ['colors' => '#9a9488']],
             'fill' => [
-                'type' => 'gradient',
+                'type' => ['gradient', 'solid', 'solid'],
                 'gradient' => ['shadeIntensity' => 1, 'opacityFrom' => 0.12, 'opacityTo' => 0, 'stops' => [0, 100]],
             ],
             'grid' => ['borderColor' => '#ece9e0', 'strokeDashArray' => 0],
