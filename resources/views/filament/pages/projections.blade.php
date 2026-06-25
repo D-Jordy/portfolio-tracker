@@ -46,7 +46,7 @@
     {{-- KPI row --}}
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;">
         <x-divio.kpi label="Huidige portefeuille" :value="$eur($data['starting_value_eur'] ?? 0)" rule="neutral" />
-        <x-divio.kpi label="Verwacht over {{ $this->horizon }} jaar" :value="$eur($projectedValue)" inverted />
+        <x-divio.kpi label="Verwacht over {{ $this->horizon }} jaar" :value="$eur($projectedValue)" rule="ink" />
         <x-divio.kpi label="Gemengde groeivoet" :value="$pct($data['growth_rate'] ?? 0)" rule="positive" valueColor="var(--divio-positive,#2f7d52)" />
         <x-divio.kpi label="Dividenden over {{ $this->horizon }} jaar" :value="$eur($projectedDividends)" rule="neutral" />
     </div>
