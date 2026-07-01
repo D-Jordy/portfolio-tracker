@@ -4,6 +4,11 @@ return [
     'nav' => 'Portfolio',
     'title' => 'Portfolio',
 
+    'refresh' => [
+        'label' => 'Refresh',
+        'done' => 'Market data updated',
+    ],
+
     'chart' => [
         'heading' => 'Portfolio value',
         'value' => 'Value',

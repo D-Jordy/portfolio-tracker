@@ -3,12 +3,16 @@
 namespace App\Filament\Pages;
 
 use App\Actions\ComputeIncomingDividends;
+use App\Filament\Concerns\RefreshesMarketData;
 use BackedEnum;
+use Filament\Actions\Action;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
 
 class Dividends extends Page
 {
+    use RefreshesMarketData;
+
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedBanknotes;
 
     protected static ?int $navigationSort = 2;
@@ -41,5 +45,11 @@ class Dividends extends Page
     public function getTitle(): string
     {
         return __('dividends.title');
+    }
+
+    /** @return array<int, Action> */
+    protected function getHeaderActions(): array
+    {
+        return [$this->refreshMarketDataAction()];
     }
 }
