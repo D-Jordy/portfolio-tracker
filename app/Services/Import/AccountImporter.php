@@ -31,7 +31,9 @@ use Illuminate\Support\Facades\Log;
 class AccountImporter
 {
     private int $inserted = 0;
-    private int $skipped  = 0;
+
+    private int $skipped = 0;
+
     private array $errors = [];
 
     public function import(Account $account, string $csvPath): ImportResult
@@ -46,8 +48,8 @@ class AccountImporter
                     $this->errors[] = "Line {$lineNumber}: {$e->getMessage()}";
                     Log::warning('AccountImporter row error', [
                         'account' => $account->id,
-                        'line'    => $lineNumber,
-                        'error'   => $e->getMessage(),
+                        'line' => $lineNumber,
+                        'error' => $e->getMessage(),
                     ]);
                 }
             }
@@ -65,9 +67,9 @@ class AccountImporter
         }
 
         $description = trim($row[5] ?? '');
-        $isin        = trim($row[4] ?? '');
-        $currency    = trim($row[7] ?? '');
-        $rawAmount   = $this->parseDecimal($row[8]);
+        $isin = trim($row[4] ?? '');
+        $currency = trim($row[7] ?? '');
+        $rawAmount = $this->parseDecimal($row[8]);
 
         if ($rawAmount === null || $currency === '') {
             return;
@@ -75,20 +77,11 @@ class AccountImporter
 
         [$amount, $currency] = CurrencyNormaliser::normalise($rawAmount, $currency);
 
-        $type     = $this->classify($description);
+        $type = $this->classify($description);
         $excluded = $this->isExcludedFromReturns($type);
 
-        $dedupeHash = $this->dedupeHash(
-            $row[0], $row[1], $description, $rawAmount, $row[7] ?? ''
-        );
-
-        // Idempotency: skip if this hash already exists for this account
-        if (CashMovement::where('account_id', $account->id)
-                        ->where('dedupe_hash', $dedupeHash)
-                        ->exists()) {
-            $this->skipped++;
-            return;
-        }
+        $occurredAt = $this->parseDateTime($row[0], $row[1]);
+        $dedupeHash = CashMovement::makeDedupeHash($occurredAt, $description, $amount, $currency);
 
         $instrument = null;
         if ($isin !== '') {
@@ -99,28 +92,33 @@ class AccountImporter
             );
         }
 
-        $occurredAt = $this->parseDateTime($row[0], $row[1]);
-        $valueDate  = $this->parseDate($row[2]);
-        $fxRate     = $this->parseDecimal($row[6]);
+        $valueDate = $this->parseDate($row[2]);
+        $fxRate = $this->parseDecimal($row[6]);
         $balanceEur = $this->parseBalanceEur($row[10], $row[9] ?? '');
 
-        CashMovement::create([
-            'account_id'              => $account->id,
-            'instrument_id'           => $instrument?->id,
-            'occurred_at'             => $occurredAt,
-            'value_date'              => $valueDate,
-            'type'                    => $type,
-            'amount'                  => $amount,
-            'currency'                => $currency,
-            'fx_rate'                 => $fxRate ?: null,
-            'balance_eur'             => $balanceEur,
-            'description'             => $description,
-            'excluded_from_returns'   => $excluded,
-            'source'                  => 'import',
-            'dedupe_hash'             => $dedupeHash,
-        ]);
+        // Idempotent: match on (account_id, dedupe_hash) so re-importing an
+        // overlapping export updates the existing row instead of duplicating.
+        $movement = CashMovement::updateOrCreate(
+            [
+                'account_id' => $account->id,
+                'dedupe_hash' => $dedupeHash,
+            ],
+            [
+                'instrument_id' => $instrument?->id,
+                'occurred_at' => $occurredAt,
+                'value_date' => $valueDate,
+                'type' => $type,
+                'amount' => $amount,
+                'currency' => $currency,
+                'fx_rate' => $fxRate ?: null,
+                'balance_eur' => $balanceEur,
+                'description' => $description,
+                'excluded_from_returns' => $excluded,
+                'source' => 'import',
+            ]
+        );
 
-        $this->inserted++;
+        $movement->wasRecentlyCreated ? $this->inserted++ : $this->skipped++;
     }
 
     /**
@@ -220,25 +218,9 @@ class AccountImporter
         return in_array($type, ['internal', 'trade'], true);
     }
 
-    private function dedupeHash(
-        string $date,
-        string $time,
-        string $description,
-        ?string $amount,
-        string $currency
-    ): string {
-        return hash('sha256', implode('|', [
-            trim($date),
-            trim($time),
-            trim($description),
-            trim((string) $amount),
-            trim($currency),
-        ]));
-    }
-
     private function parseDateTime(string $date, string $time): Carbon
     {
-        return Carbon::createFromFormat('d-m-Y H:i', trim($date) . ' ' . trim($time));
+        return Carbon::createFromFormat('d-m-Y H:i', trim($date).' '.trim($time));
     }
 
     private function parseDate(string $value): ?string
@@ -259,6 +241,7 @@ class AccountImporter
         if ($value === null || trim((string) $value) === '') {
             return null;
         }
+
         return str_replace(',', '.', trim((string) $value));
     }
 
@@ -271,6 +254,7 @@ class AccountImporter
         if ($normalised !== 'EUR') {
             return null; // only store EUR balances
         }
+
         return $this->parseDecimal($balance);
     }
 
@@ -289,7 +273,7 @@ class AccountImporter
             if ($lineNumber === 1) {
                 continue; // skip header
             }
-            if (array_filter($row, fn($v) => trim($v) !== '') === []) {
+            if (array_filter($row, fn ($v) => trim($v) !== '') === []) {
                 continue; // skip blank lines
             }
             $rows[$lineNumber] = $row;
