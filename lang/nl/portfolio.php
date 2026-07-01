@@ -4,6 +4,11 @@ return [
     'nav' => 'Portfolio',
     'title' => 'Portfolio',
 
+    'refresh' => [
+        'label' => 'Verversen',
+        'done' => 'Marktdata bijgewerkt',
+    ],
+
     'chart' => [
         'heading' => 'Portefeuillewaarde',
         'value' => 'Waarde',
