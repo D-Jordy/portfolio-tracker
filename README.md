@@ -1,5 +1,3 @@
-Disclaimer: this project is a work in progress and has yet to be deployed
-
 # Tally.
 
 DeGiro is alright, unless you want insight into your portfolio.
